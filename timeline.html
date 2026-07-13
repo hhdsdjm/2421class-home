@@ -1,0 +1,1615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时光轴 — Timeline</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===== CSS Variables ===== */
+        :root {
+            --color-bg: #faf8f5;
+            --color-surface: #ffffff;
+            --color-line: #e0d9ce;
+            --color-line-accent: #c4a882;
+            --color-accent: #b8854a;
+            --color-accent-soft: #d4b896;
+            --color-accent-dim: rgba(184, 133, 74, 0.08);
+            --color-text: #2d2824;
+            --color-text-secondary: #6b6259;
+            --color-text-light: #9a9085;
+            --color-border: #ede8e0;
+            --color-shadow: rgba(45, 40, 36, 0.06);
+            --color-shadow-lg: rgba(45, 40, 36, 0.10);
+            --radius-card: 20px;
+            --radius-node: 50%;
+            --font-display: 'Outfit', sans-serif;
+            --font-body: 'Noto Sans SC', sans-serif;
+            --transition-smooth: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--color-bg);
+            color: var(--color-text);
+            line-height: 1.6;
+            min-height: 100dvh;
+            overflow-x: hidden;
+        }
+
+        /* ===== Subtle Background Texture ===== */
+        .bg-texture {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            opacity: 0.4;
+            background-image:
+                radial-gradient(circle at 20% 30%, var(--color-accent-dim) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, var(--color-accent-dim) 0%, transparent 50%);
+        }
+
+        /* ===== Header ===== */
+        .header {
+            position: relative;
+            z-index: 2;
+            text-align: center;
+            padding: clamp(48px, 8vw, 96px) 20px clamp(24px, 4vw, 48px);
+        }
+
+        .header-eyebrow {
+            display: inline-block;
+            font-family: var(--font-display);
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--color-accent);
+            margin-bottom: 16px;
+            position: relative;
+        }
+
+        .header-eyebrow::after {
+            content: '';
+            display: block;
+            width: 32px;
+            height: 2px;
+            background: var(--color-accent-soft);
+            margin: 10px auto 0;
+            border-radius: 1px;
+        }
+
+        .header h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 600;
+            letter-spacing: -0.03em;
+            color: var(--color-text);
+            line-height: 1.15;
+        }
+
+        .header-subtitle {
+            margin-top: 12px;
+            font-size: clamp(0.95rem, 1.5vw, 1.1rem);
+            color: var(--color-text-secondary);
+            font-weight: 400;
+            max-width: 480px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* ===== Timeline Container ===== */
+        .timeline {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 clamp(16px, 4vw, 40px) clamp(60px, 10vw, 120px);
+        }
+
+        /* ===== Center Line ===== */
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: linear-gradient(
+                180deg,
+                transparent 0%,
+                var(--color-line) 8%,
+                var(--color-line) 92%,
+                transparent 100%
+            );
+            transform: translateX(-50%);
+            z-index: 0;
+        }
+
+        .timeline::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background: linear-gradient(
+                180deg,
+                transparent 0%,
+                var(--color-line-accent) 8%,
+                var(--color-line-accent) 50%,
+                var(--color-line-accent) 92%,
+                transparent 100%
+            );
+            transform: translateX(-50%);
+            z-index: 0;
+            opacity: 0.5;
+        }
+
+        /* ===== Timeline Entry ===== */
+        .tl-entry {
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: clamp(40px, 6vw, 64px);
+            z-index: 1;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: revealEntry 0.7s var(--transition-smooth) forwards;
+            animation-play-state: paused;
+        }
+
+        .tl-entry.visible {
+            animation-play-state: running;
+        }
+
+        @keyframes revealEntry {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== Photo & Content Panels ===== */
+        .tl-photo,
+        .tl-content {
+            width: 50%;
+            padding: 0 clamp(20px, 4vw, 48px);
+            position: relative;
+        }
+
+        /* Album cover (replaces single photo card) */
+        .tl-photo-inner {
+            position: relative;
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            aspect-ratio: 4 / 3;
+            box-shadow:
+                0 1px 2px var(--color-shadow),
+                0 4px 16px var(--color-shadow),
+                0 16px 48px var(--color-shadow-lg);
+            transition: transform 0.4s var(--transition-smooth), box-shadow 0.4s var(--transition-smooth);
+            cursor: pointer;
+            background: var(--color-border);
+        }
+
+        .tl-photo-inner:hover {
+            transform: translateY(-4px) scale(1.01);
+            box-shadow:
+                0 2px 4px var(--color-shadow),
+                0 8px 24px var(--color-shadow),
+                0 24px 64px rgba(45, 40, 36, 0.14);
+        }
+
+        /* ===== Album Photo Grid ===== */
+        .album-grid {
+            display: grid;
+            width: 100%;
+            height: 100%;
+            gap: 3px;
+        }
+
+        /* 1 photo: fill entirely */
+        .album-grid.c1 {
+            grid-template-columns: 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        /* 2 photos: side by side */
+        .album-grid.c2 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr;
+        }
+
+        /* 3 photos: 2 top + 1 bottom spanning full width */
+        .album-grid.c3 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+        .album-grid.c3 .album-thumb:nth-child(3) {
+            grid-column: 1 / -1;
+        }
+
+        /* 4+ photos: 2x2 grid */
+        .album-grid.c4 {
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+        }
+
+        .album-thumb {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #e8e0d4, #d4c8b8);
+        }
+
+        .album-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s var(--transition-smooth), filter 0.4s ease;
+        }
+
+        .tl-photo-inner:hover .album-thumb img {
+            filter: brightness(1.03);
+        }
+
+        .tl-photo-inner:hover .album-thumb:first-child img {
+            transform: scale(1.04);
+        }
+
+        /* "+N more" overlay */
+        .album-more {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(45, 40, 36, 0.55);
+            color: #fff;
+            font-family: var(--font-display);
+            font-size: 1.6rem;
+            font-weight: 600;
+            backdrop-filter: blur(2px);
+        }
+
+        /* Photo count badge */
+        .album-badge {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 12px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border-radius: 100px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--color-text);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            z-index: 3;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .tl-photo-inner:hover .album-badge {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .album-badge svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        /* ===== Content card ===== */
+        .tl-content-inner {
+            padding: clamp(16px, 2vw, 28px) 0;
+        }
+
+        .tl-date {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            color: var(--color-accent);
+            margin-bottom: 12px;
+        }
+
+        .tl-date::before {
+            content: '';
+            width: 20px;
+            height: 1px;
+            background: var(--color-accent-soft);
+        }
+
+        .tl-title {
+            font-family: var(--font-display);
+            font-size: clamp(1.25rem, 2vw, 1.65rem);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--color-text);
+            margin-bottom: 12px;
+            line-height: 1.25;
+        }
+
+        .tl-desc {
+            font-size: clamp(0.9rem, 1.1vw, 0.98rem);
+            color: var(--color-text-secondary);
+            line-height: 1.75;
+            max-width: 42ch;
+        }
+
+        .tl-tag {
+            display: inline-block;
+            margin-top: 16px;
+            padding: 4px 14px;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--color-accent);
+            background: var(--color-accent-dim);
+            border-radius: 100px;
+            letter-spacing: 0.02em;
+        }
+
+        /* ===== Node (circle on the line) ===== */
+        .tl-node {
+            position: absolute;
+            top: 24px;
+            left: 50%;
+            transform: translate(-50%, 0);
+            width: 16px;
+            height: 16px;
+            background: var(--color-surface);
+            border: 2px solid var(--color-line-accent);
+            border-radius: var(--radius-node);
+            z-index: 2;
+            transition: all 0.4s var(--transition-smooth);
+        }
+
+        .tl-entry:hover .tl-node {
+            background: var(--color-accent);
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 8px var(--color-accent-dim);
+            transform: translate(-50%, 0) scale(1.3);
+        }
+
+        .tl-node::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 4px;
+            height: 4px;
+            background: var(--color-accent);
+            border-radius: 50%;
+            transition: all 0.3s ease;
+        }
+
+        .tl-entry:hover .tl-node::after {
+            background: var(--color-surface);
+            width: 6px;
+            height: 6px;
+        }
+
+        /* ===== Layout: Odd = photo left, Even = text left ===== */
+        .tl-entry:nth-child(odd) .tl-photo { order: 0; text-align: right; }
+        .tl-entry:nth-child(odd) .tl-content { order: 1; text-align: left; }
+        .tl-entry:nth-child(even) .tl-photo { order: 1; text-align: left; }
+        .tl-entry:nth-child(even) .tl-content { order: 0; text-align: right; }
+
+        .tl-entry:nth-child(even) .tl-content .tl-date { flex-direction: row-reverse; }
+        .tl-entry:nth-child(even) .tl-content .tl-date::before { content: none; }
+        .tl-entry:nth-child(even) .tl-content .tl-date::after {
+            content: '';
+            width: 20px;
+            height: 1px;
+            background: var(--color-accent-soft);
+        }
+        .tl-entry:nth-child(even) .tl-content .tl-desc { margin-left: auto; }
+
+        /* ===== Staggered animation delay ===== */
+        .tl-entry:nth-child(1) { animation-delay: 0.05s; }
+        .tl-entry:nth-child(2) { animation-delay: 0.15s; }
+        .tl-entry:nth-child(3) { animation-delay: 0.25s; }
+        .tl-entry:nth-child(4) { animation-delay: 0.35s; }
+        .tl-entry:nth-child(5) { animation-delay: 0.45s; }
+        .tl-entry:nth-child(6) { animation-delay: 0.55s; }
+        .tl-entry:nth-child(7) { animation-delay: 0.65s; }
+        .tl-entry:nth-child(8) { animation-delay: 0.75s; }
+        .tl-entry:nth-child(9) { animation-delay: 0.85s; }
+        .tl-entry:nth-child(10) { animation-delay: 0.95s; }
+
+        /* ===== Connector line from node to card ===== */
+        .tl-photo::before {
+            content: '';
+            position: absolute;
+            top: 30px;
+            width: clamp(20px, 4vw, 36px);
+            height: 1px;
+            background: var(--color-line);
+        }
+        .tl-entry:nth-child(odd) .tl-photo::before { right: 12px; }
+        .tl-entry:nth-child(even) .tl-photo::before { left: 12px; }
+
+        /* ===== Footer / End mark ===== */
+        .tl-end {
+            text-align: center;
+            padding: 40px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .tl-end-text {
+            display: block;
+            margin-top: 16px;
+            font-size: 0.85rem;
+            color: var(--color-text-light);
+        }
+
+        /* ===================================================== */
+        /* ===== Lightbox / Gallery Viewer ===== */
+        /* ===================================================== */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.35s var(--transition-smooth), visibility 0.35s;
+            background: rgba(20, 18, 16, 0.92);
+            backdrop-filter: blur(12px);
+        }
+
+        .lightbox.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* Backdrop click target */
+        .lightbox-backdrop {
+            position: absolute;
+            inset: 0;
+            cursor: zoom-out;
+        }
+
+        /* Stage: holds the image */
+        .lightbox-stage {
+            position: relative;
+            z-index: 2;
+            max-width: 90vw;
+            max-height: 72vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .lightbox-stage img {
+            max-width: 90vw;
+            max-height: 72vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+            user-select: none;
+            -webkit-user-drag: none;
+            opacity: 0;
+            transform: scale(0.97);
+            transition: opacity 0.3s ease, transform 0.3s var(--transition-smooth);
+        }
+
+        .lightbox-stage img.loaded {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        /* Navigation arrows */
+        .lightbox-nav {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 3;
+            width: 52px;
+            height: 52px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 1.6rem;
+            cursor: pointer;
+            transition: background 0.25s ease, transform 0.25s ease, opacity 0.25s ease;
+            backdrop-filter: blur(4px);
+            user-select: none;
+        }
+
+        .lightbox-nav:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-50%) scale(1.08);
+        }
+
+        .lightbox-nav:active {
+            transform: translateY(-50%) scale(0.95);
+        }
+
+        .lightbox-prev { left: clamp(16px, 4vw, 48px); }
+        .lightbox-next { right: clamp(16px, 4vw, 48px); }
+
+        .lightbox-nav.hidden { opacity: 0; pointer-events: none; }
+
+        /* Close button */
+        .lightbox-close {
+            position: absolute;
+            top: clamp(16px, 3vw, 28px);
+            right: clamp(16px, 3vw, 28px);
+            z-index: 4;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 50%;
+            color: #fff;
+            font-size: 1.3rem;
+            cursor: pointer;
+            transition: background 0.25s ease, transform 0.25s ease;
+            backdrop-filter: blur(4px);
+        }
+
+        .lightbox-close:hover {
+            background: rgba(255, 80, 80, 0.3);
+            transform: rotate(90deg);
+        }
+
+        /* Info bar: counter + title */
+        .lightbox-info {
+            position: absolute;
+            bottom: clamp(80px, 12vh, 120px);
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            color: rgba(255, 255, 255, 0.85);
+            font-family: var(--font-display);
+            font-size: 0.9rem;
+            font-weight: 500;
+            pointer-events: none;
+        }
+
+        .lightbox-counter {
+            padding: 4px 14px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 100px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Thumbnail strip */
+        .lightbox-thumbs {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 3;
+            display: flex;
+            gap: 8px;
+            padding: 16px clamp(16px, 4vw, 48px);
+            overflow-x: auto;
+            overflow-y: hidden;
+            scroll-behavior: smooth;
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255,255,255,0.2) transparent;
+            justify-content: center;
+            min-height: 72px;
+        }
+
+        .lightbox-thumbs::-webkit-scrollbar {
+            height: 4px;
+        }
+        .lightbox-thumbs::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .lightbox-thumbs::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        .lb-thumb {
+            position: relative;
+            flex-shrink: 0;
+            width: 64px;
+            height: 48px;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            opacity: 0.5;
+            border: 2px solid transparent;
+            transition: opacity 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+        }
+
+        .lb-thumb:hover {
+            opacity: 0.85;
+            transform: translateY(-2px);
+        }
+
+        .lb-thumb.active {
+            opacity: 1;
+            border-color: var(--color-accent-soft);
+            transform: translateY(-2px);
+        }
+
+        .lb-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+        }
+
+        /* Loading spinner */
+        .lightbox-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 36px;
+            height: 36px;
+            border: 3px solid rgba(255, 255, 255, 0.15);
+            border-top-color: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            z-index: 1;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .lightbox-spinner.show {
+            opacity: 1;
+        }
+
+        @keyframes spin {
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        /* ===== Responsive: Tablet & Mobile ===== */
+        @media (max-width: 768px) {
+            .timeline::before,
+            .timeline::after {
+                left: 28px;
+                transform: none;
+            }
+
+            .tl-entry {
+                flex-direction: column !important;
+                padding-left: 60px;
+                margin-bottom: clamp(32px, 6vw, 48px);
+            }
+
+            .tl-photo,
+            .tl-content {
+                width: 100%;
+                padding: 0;
+                text-align: left !important;
+            }
+
+            .tl-entry:nth-child(odd) .tl-photo,
+            .tl-entry:nth-child(even) .tl-photo {
+                order: -1;
+            }
+
+            .tl-entry:nth-child(odd) .tl-content,
+            .tl-entry:nth-child(even) .tl-content {
+                order: 1;
+                text-align: left !important;
+            }
+
+            .tl-entry:nth-child(even) .tl-content .tl-date { flex-direction: row; }
+            .tl-entry:nth-child(even) .tl-content .tl-date::after { content: none; }
+            .tl-entry:nth-child(even) .tl-content .tl-date::before {
+                content: '';
+                width: 20px;
+                height: 1px;
+                background: var(--color-accent-soft);
+            }
+            .tl-entry:nth-child(even) .tl-content .tl-desc { margin-left: 0; }
+
+            .tl-node { left: 28px; top: 20px; }
+            .tl-photo::before { display: none; }
+            .tl-photo-inner {
+                margin-bottom: 20px;
+                aspect-ratio: 16 / 9;
+            }
+
+            /* Lightbox adjustments */
+            .lightbox-nav { width: 44px; height: 44px; font-size: 1.4rem; }
+            .lb-thumb { width: 52px; height: 40px; }
+        }
+
+        @media (max-width: 480px) {
+            .timeline::before,
+            .timeline::after { left: 16px; }
+            .tl-entry { padding-left: 42px; }
+            .tl-node { left: 16px; width: 14px; height: 14px; }
+            .tl-photo-inner { border-radius: 14px; }
+
+            .lightbox-thumbs { padding: 12px 16px; }
+            .lb-thumb { width: 44px; height: 34px; }
+        }
+
+        /* ===== Reduced Motion ===== */
+        @media (prefers-reduced-motion: reduce) {
+            .tl-entry {
+                animation: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+            .tl-photo-inner:hover { transform: none; }
+            .tl-entry:hover .tl-node { transform: translate(-50%, 0); }
+            html { scroll-behavior: auto; }
+            .lightbox { transition: none; }
+            .lightbox-stage img { transition: none; }
+        }
+
+        /* ===== Album Picker (File System Access fallback) ===== */
+        .album-picker {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            background: var(--color-surface);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+            padding: 20px 24px;
+            max-width: 480px;
+            width: calc(100% - 32px);
+            display: none;
+            animation: pickerSlideUp 0.4s var(--transition-smooth);
+        }
+        .album-picker.show { display: block; }
+        .album-picker-inner {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .album-picker-icon { font-size: 1.8rem; flex-shrink: 0; }
+        .album-picker-text { flex: 1; min-width: 0; }
+        .album-picker-text strong {
+            display: block;
+            font-size: 0.95rem;
+            margin-bottom: 4px;
+            color: var(--color-text);
+        }
+        .album-picker-text span {
+            font-size: 0.82rem;
+            color: var(--color-text-secondary);
+            line-height: 1.5;
+        }
+        .album-picker-text code {
+            background: var(--color-border);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 0.78rem;
+            font-family: 'Outfit', monospace;
+        }
+        .album-picker-btn {
+            padding: 10px 20px;
+            background: var(--color-accent);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.2s ease;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+        .album-picker-btn:hover {
+            background: #a07440;
+            transform: translateY(-1px);
+        }
+        .album-picker-btn:active { transform: translateY(0); }
+
+        @keyframes pickerSlideUp {
+            from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+
+        /* Album loading placeholder */
+        .album-cover:empty::after {
+            content: '正在加载相册…';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-light);
+            font-size: 0.85rem;
+            background: linear-gradient(135deg, #e8e0d4, #d4c8b8);
+        }
+
+        /* Album empty state */
+        .album-empty {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--color-text-light);
+            font-size: 0.85rem;
+            background: linear-gradient(135deg, #e8e0d4, #d4c8b8);
+            border-radius: var(--radius-card);
+        }
+
+        /* Toast notification */
+        .album-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            z-index: 200;
+            background: var(--color-text);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: none;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+        .album-toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* ===== Print ===== */
+        @media print {
+            .bg-texture, .lightbox { display: none; }
+            .tl-entry {
+                animation: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+                break-inside: avoid;
+            }
+            body { background: white; }
+        }
+
+        /* ===== 返回首页按钮 ===== */
+        .back-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 999;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 9px 18px 9px 14px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            border-radius: 30px;
+            color: #333;
+            font-size: 0.88rem;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .back-btn:hover {
+            transform: translateX(-3px) scale(1.03);
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.95);
+        }
+        .back-btn:active {
+            transform: translateX(-1px) scale(0.98);
+        }
+        .back-btn svg {
+            width: 18px;
+            height: 18px;
+            transition: transform 0.3s ease;
+        }
+        .back-btn:hover svg {
+            transform: translateX(-2px);
+        }
+        @media (max-width: 600px) {
+            .back-btn {
+                padding: 7px 14px 7px 11px;
+                font-size: 0.8rem;
+                top: 12px;
+                left: 12px;
+                gap: 4px;
+            }
+            .back-btn svg { width: 16px; height: 16px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .back-btn, .back-btn svg { transition: none; }
+            .back-btn:hover { transform: none; }
+            .back-btn:hover svg { transform: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-texture"></div>
+
+    <!-- 返回首页按钮 -->
+    <a href="index.html?back=1" class="back-btn" aria-label="返回首页">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>返回首页</span>
+    </a>
+
+    <!-- ===== Header ===== -->
+    <header class="header">
+        <div class="header-eyebrow">Timeline</div>
+        <h1>歪比巴卜1</h1>
+        <p class="header-subtitle">
+            歪比巴卜2
+        </p>
+    </header>
+
+    <!-- ===== Timeline ===== -->
+    <section class="timeline" id="timeline">
+
+        <!-- Entry 1 -->
+        <div class="tl-entry" data-album="event1">
+            <div class="tl-photo">
+                <div class="tl-photo-inner album-cover"></div>
+            </div>
+            <div class="tl-content">
+                <div class="tl-content-inner">
+                    <div class="tl-date">2025 . 05 . 20</div>
+                    <h2 class="tl-title">重庆研学</h2>
+                    <p class="tl-desc">
+                        歪比巴卜3
+                    </p>
+                </div>
+            </div>
+            <div class="tl-node"></div>
+        </div>
+
+        <!-- Entry 2 -->
+        <div class="tl-entry" data-album="event2">
+            <div class="tl-photo">
+                <div class="tl-photo-inner album-cover"></div>
+            </div>
+            <div class="tl-content">
+                <div class="tl-content-inner">
+                    <div class="tl-date">2025 . 07 . 22</div>
+                    <h2 class="tl-title">高二远足</h2>
+                    <p class="tl-desc">
+                        歪比巴卜4
+                    </p>
+                </div>
+            </div>
+            <div class="tl-node"></div>
+        </div>
+
+        <!-- Entry 3 -->
+        <div class="tl-entry" data-album="event3">
+            <div class="tl-photo">
+                <div class="tl-photo-inner album-cover"></div>
+            </div>
+            <div class="tl-content">
+                <div class="tl-content-inner">
+                    <div class="tl-date">2025 . 09 . 01</div>
+                    <h2 class="tl-title">高三，我们来了</h2>
+                    <p class="tl-desc">
+                        教室黑板上"距高考还有280天"的粉笔字犹在眼前。
+                        堆积如山的试卷、课间十分钟的短暂放空、晚自习后天台的星空——
+                        那些看似枯燥的日子，回头看竟是最滚烫的青春。
+                    </p>
+                </div>
+            </div>
+            <div class="tl-node"></div>
+        </div>
+
+        <!-- Entry 4 -->
+        <div class="tl-entry" data-album="event4">
+            <div class="tl-photo">
+                <div class="tl-photo-inner album-cover"></div>
+            </div>
+            <div class="tl-content">
+                <div class="tl-content-inner">
+                    <div class="tl-date">2025 . 11 . 08</div>
+                    <h2 class="tl-title">校园音乐节演出</h2>
+                    <p class="tl-desc">
+                        第一次站上舞台，吉他在手中微微发烫。台下人头攒动，
+                        灯光晃得几乎睁不开眼。但当第一个和弦响起的那一刻，整个世界都安静了。
+                        原来勇敢，就是明知会紧张，依然选择走上前的那一步。
+                    </p>
+                </div>
+            </div>
+            <div class="tl-node"></div>
+        </div>
+
+        <!-- Entry 5 -->
+        <div class="tl-entry" data-album="event5">
+            <div class="tl-photo">
+                <div class="tl-photo-inner album-cover"></div>
+            </div>
+            <div class="tl-content">
+                <div class="tl-content-inner">
+                    <div class="tl-date">2026 . 01 . 28</div>
+                    <h2 class="tl-title">十八岁成人礼</h2>
+                    <p class="tl-desc">
+                        气球、鲜花、朋友们的祝福，还有妈妈偷偷抹去的眼泪。
+                        站在成年的门槛上回头望，那些被呵护的时光如此珍贵；
+                        向前看，世界辽阔，值得全力以赴。
+                    </p>
+                </div>
+            </div>
+            <div class="tl-node"></div>
+        </div>
+
+        <!-- Entry 6 -->
+        <div class="tl-entry" data-album="event6">
+            <div class="tl-photo">
+                <div class="tl-photo-inner album-cover"></div>
+            </div>
+            <div class="tl-content">
+                <div class="tl-content-inner">
+                    <div class="tl-date">2026 . 04 . 02</div>
+                    <h2 class="tl-title">毕业旅行 — 大理</h2>
+                    <p class="tl-desc">
+                        高考结束后的第一场远行。洱海边的风带着青草香，我们在古城里漫无目的地游走。
+                        那些没心没肺的笑声，现在想来依然能让人嘴角上扬。
+                    </p>
+                </div>
+            </div>
+            <div class="tl-node"></div>
+        </div>
+
+        <!-- Entry 7 -->
+        <div class="tl-entry" data-album="event7">
+            <div class="tl-photo">
+                <div class="tl-photo-inner album-cover"></div>
+            </div>
+            <div class="tl-content">
+                <div class="tl-content-inner">
+                    <div class="tl-date">2026 . 06 . 15</div>
+                    <h2 class="tl-title">大学录取通知书</h2>
+                    <p class="tl-desc">
+                        收到梦校录取通知书的那天，阳光穿过窗棂洒在信封上。
+                        三年的努力终于在这一刻绽放，所有的挑灯夜读、所有的焦虑等待，
+                        都化作了手中这张沉甸甸的纸。
+                    </p>
+                </div>
+            </div>
+            <div class="tl-node"></div>
+        </div>
+
+        <!-- Entry 8 -->
+        <div class="tl-entry" data-album="event8">
+            <div class="tl-photo">
+                <div class="tl-photo-inner album-cover"></div>
+            </div>
+            <div class="tl-content">
+                <div class="tl-content-inner">
+                    <div class="tl-date">2026 . 07 . 05</div>
+                    <h2 class="tl-title">你好，世界</h2>
+                    <p class="tl-desc">
+                        hello world!
+                    </p>
+                </div>
+            </div>
+            <div class="tl-node"></div>
+        </div>
+
+    </section>
+
+    <!-- ===== End Mark ===== -->
+    <div class="tl-end">
+        <span class="tl-end-text">更多故事，正在书写</span>
+    </div>
+
+    <!-- ===== Lightbox / Gallery Viewer ===== -->
+    <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="照片浏览">
+        <div class="lightbox-backdrop" id="lb-backdrop"></div>
+        <div class="lightbox-spinner" id="lb-spinner"></div>
+        <button class="lightbox-close" id="lb-close" aria-label="关闭">&times;</button>
+        <button class="lightbox-nav lightbox-prev" id="lb-prev" aria-label="上一张">&#8249;</button>
+        <button class="lightbox-nav lightbox-next" id="lb-next" aria-label="下一张">&#8250;</button>
+        <div class="lightbox-stage">
+            <img id="lb-img" src="" alt="照片">
+        </div>
+        <div class="lightbox-info">
+            <span class="lightbox-counter" id="lb-counter">1 / 1</span>
+        </div>
+        <div class="lightbox-thumbs" id="lb-thumbs"></div>
+    </div>
+
+    <!-- ===== Folder Picker (File System Access fallback) ===== -->
+    <div class="album-picker" id="album-picker">
+        <div class="album-picker-inner">
+            <div class="album-picker-icon">📁</div>
+            <div class="album-picker-text">
+                <strong>选择相册文件夹以自动加载照片</strong>
+                <span>点击后选择项目中的 <code>assets/albums</code> 文件夹，自动读取所有相片。下次打开无需重复操作。</span>
+            </div>
+            <button class="album-picker-btn" id="pick-albums-btn">选择文件夹</button>
+        </div>
+    </div>
+
+    <!-- ===== Toast ===== -->
+    <div class="album-toast" id="album-toast"></div>
+
+    <script>
+        // ================================================================
+        //  Auto-discovery: no manual filename listing needed.
+        //  Each album = a subfolder under assets/albums/
+        //  Strategy:
+        //    1. fetch() directory listing  (works when served via HTTP)
+        //    2. File System Access API     (works when opened as file://)
+        //    3. IndexedDB persistence      (remember the picked folder)
+        // ================================================================
+
+        const albums = {};  // { key: { urls: [...], names: [...] } }
+        const IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif|svg)$/i;
+
+        // ---- IndexedDB helpers (persist directory handle) ----
+        const IDB_NAME = 'timeline-albums';
+        const IDB_STORE = 'handles';
+
+        function idbOpen() {
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        }
+        async function idbSave(key, val) {
+            const db = await idbOpen();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).put(val, key);
+                tx.oncomplete = resolve;
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+        async function idbLoad(key) {
+            const db = await idbOpen();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(IDB_STORE, 'readonly');
+                const req = tx.objectStore(IDB_STORE).get(key);
+                req.onsuccess = () => resolve(req.result || null);
+                req.onerror = () => reject(req.error);
+            });
+        }
+
+        // ---- Method 1: fetch-based directory listing (HTTP server) ----
+        async function discoverViaFetch(albumKeys) {
+            const results = {};
+            let any = false;
+
+            await Promise.all(albumKeys.map(async key => {
+                try {
+                    const resp = await fetch('assets/albums/' + key + '/');
+                    if (!resp.ok) return;
+                    const html = await resp.text();
+                    const doc = new DOMParser().parseFromString(html, 'text/html');
+                    const links = [...doc.querySelectorAll('a')];
+                    const photos = [];
+                    for (const link of links) {
+                        const href = link.getAttribute('href') || '';
+                        const name = decodeURIComponent(href.split('/').pop().split('?')[0]);
+                        if (name && IMAGE_RE.test(name) && !photos.includes(name)) {
+                            photos.push(name);
+                        }
+                    }
+                    if (photos.length > 0) {
+                        photos.sort((a, b) => a.localeCompare(b, 'zh'));
+                        results[key] = {
+                            urls: photos.map(f => 'assets/albums/' + key + '/' + encodeURIComponent(f)),
+                            names: photos
+                        };
+                        any = true;
+                    }
+                } catch (e) { /* file:// or CORS — expected */ }
+            }));
+
+            return any ? results : null;
+        }
+
+        // ---- Method 2: File System Access API (file:// protocol) ----
+        async function discoverViaFileSystem(dirHandle) {
+            const results = {};
+
+            for await (const entry of dirHandle.values()) {
+                if (entry.kind !== 'directory') continue;
+
+                const key = entry.name;
+                const photos = [];
+
+                for await (const fh of entry.values()) {
+                    if (fh.kind === 'file' && IMAGE_RE.test(fh.name)) {
+                        const file = await fh.getFile();
+                        photos.push({ name: fh.name, url: URL.createObjectURL(file) });
+                    }
+                }
+
+                if (photos.length > 0) {
+                    photos.sort((a, b) => a.name.localeCompare(b.name, 'zh'));
+                    results[key] = {
+                        urls: photos.map(p => p.url),
+                        names: photos.map(p => p.name)
+                    };
+                }
+            }
+
+            return results;
+        }
+
+        // ---- Revoke old blob URLs before re-discovery ----
+        function revokeAlbumUrls() {
+            for (const key in albums) {
+                if (albums[key].urls) {
+                    albums[key].urls.forEach(u => {
+                        if (u.startsWith('blob:')) URL.revokeObjectURL(u);
+                    });
+                }
+            }
+        }
+
+        // ---- UI helpers ----
+        const picker = document.getElementById('album-picker');
+        const pickBtn = document.getElementById('pick-albums-btn');
+        const toast = document.getElementById('album-toast');
+
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        function showPicker() {
+            if ('showDirectoryPicker' in window) {
+                picker.classList.add('show');
+            } else {
+                // Browser doesn't support File System Access API
+                document.querySelectorAll('.album-cover').forEach(cover => {
+                    cover.innerHTML = '<div class="album-empty">此浏览器不支持自动读取本地文件夹<br>请使用 Chrome / Edge，或通过本地服务器打开</div>';
+                });
+            }
+        }
+
+        function hidePicker() {
+            picker.classList.remove('show');
+        }
+
+        // ---- Pick folder via File System Access API ----
+        async function pickAndLoadAlbums() {
+            try {
+                pickBtn.textContent = '加载中…';
+                pickBtn.disabled = true;
+
+                const dirHandle = await window.showDirectoryPicker({ mode: 'read' });
+                await idbSave('albums-dir', dirHandle);
+
+                const results = await discoverViaFileSystem(dirHandle);
+
+                revokeAlbumUrls();
+                Object.keys(albums).forEach(k => delete albums[k]);
+                Object.assign(albums, results);
+
+                hidePicker();
+                renderAllAlbums();
+
+                const count = Object.keys(results).length;
+                const total = Object.values(results).reduce((s, a) => s + a.urls.length, 0);
+                showToast('已加载 ' + count + ' 个相册，共 ' + total + ' 张照片');
+            } catch (e) {
+                if (e.name !== 'AbortError') {
+                    console.error('Folder pick failed:', e);
+                    showToast('加载失败：' + e.message);
+                }
+            } finally {
+                pickBtn.textContent = '选择文件夹';
+                pickBtn.disabled = false;
+            }
+        }
+
+        pickBtn.addEventListener('click', pickAndLoadAlbums);
+
+        // ================================================================
+        //  Render album grids
+        // ================================================================
+        const cameraIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>';
+
+        function renderAlbumGrid(coverEl, albumKey) {
+            const album = albums[albumKey];
+            if (!album || !album.urls || !album.urls.length) {
+                coverEl.innerHTML = '<div class="album-empty">暂无照片</div>';
+                coverEl.dataset.album = albumKey;
+                return;
+            }
+
+            const total = album.urls.length;
+            const visibleCount = Math.min(total, 4);
+            const gridClass = 'c' + (total <= 4 ? total : 4);
+
+            let html = '<div class="album-grid ' + gridClass + '">';
+            for (let i = 0; i < visibleCount; i++) {
+                const showMore = (i === visibleCount - 1 && total > 4);
+                html += '<div class="album-thumb" data-index="' + i + '">';
+                html += '<img src="' + album.urls[i] + '" alt="照片 ' + (i+1) + '" loading="lazy">';
+                if (showMore) {
+                    html += '<div class="album-more">+' + (total - 4) + '</div>';
+                }
+                html += '</div>';
+            }
+            html += '</div>';
+            html += '<div class="album-badge">' + cameraIcon + '<span>' + total + ' 张</span></div>';
+
+            coverEl.innerHTML = html;
+            coverEl.dataset.album = albumKey;
+        }
+
+        function renderAllAlbums() {
+            document.querySelectorAll('.tl-entry[data-album]').forEach(entry => {
+                const key = entry.dataset.album;
+                const cover = entry.querySelector('.album-cover');
+                if (cover) renderAlbumGrid(cover, key);
+            });
+            // Re-attach click listeners (covers are re-rendered)
+            attachCoverListeners();
+        }
+
+        // ================================================================
+        //  Lightbox / Gallery logic
+        // ================================================================
+        const lightbox = document.getElementById('lightbox');
+        const lbImg = document.getElementById('lb-img');
+        const lbCounter = document.getElementById('lb-counter');
+        const lbThumbs = document.getElementById('lb-thumbs');
+        const lbSpinner = document.getElementById('lb-spinner');
+        const lbPrev = document.getElementById('lb-prev');
+        const lbNext = document.getElementById('lb-next');
+        const lbClose = document.getElementById('lb-close');
+        const lbBackdrop = document.getElementById('lb-backdrop');
+
+        let currentAlbum = null;
+        let currentIndex = 0;
+
+        function openLightbox(albumKey, index) {
+            const album = albums[albumKey];
+            if (!album || !album.urls || !album.urls.length) return;
+
+            currentAlbum = album;
+            currentIndex = Math.max(0, Math.min(index, album.urls.length - 1));
+
+            renderThumbnails();
+            showPhoto();
+
+            lightbox.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            lbClose.focus();
+        }
+
+        function showPhoto() {
+            const src = currentAlbum.urls[currentIndex];
+
+            lbSpinner.classList.add('show');
+            lbImg.classList.remove('loaded');
+            lbImg.src = src;
+
+            lbCounter.textContent = (currentIndex + 1) + ' / ' + currentAlbum.urls.length;
+
+            document.querySelectorAll('.lb-thumb').forEach((t, i) => {
+                t.classList.toggle('active', i === currentIndex);
+            });
+
+            const activeThumb = lbThumbs.querySelector('.lb-thumb.active');
+            if (activeThumb) {
+                activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+
+            const single = currentAlbum.urls.length <= 1;
+            lbPrev.classList.toggle('hidden', single);
+            lbNext.classList.toggle('hidden', single);
+        }
+
+        lbImg.addEventListener('load', () => {
+            lbSpinner.classList.remove('show');
+            lbImg.classList.add('loaded');
+        });
+
+        lbImg.addEventListener('error', () => {
+            lbSpinner.classList.remove('show');
+            lbImg.classList.add('loaded');
+            lbImg.alt = '图片加载失败';
+        });
+
+        function renderThumbnails() {
+            let html = '';
+            currentAlbum.urls.forEach((url, i) => {
+                html += '<div class="lb-thumb' + (i === currentIndex ? ' active' : '') + '" data-index="' + i + '">';
+                html += '<img src="' + url + '" alt="缩略图 ' + (i+1) + '" loading="lazy">';
+                html += '</div>';
+            });
+            lbThumbs.innerHTML = html;
+
+            lbThumbs.querySelectorAll('.lb-thumb').forEach(thumb => {
+                thumb.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    currentIndex = parseInt(thumb.dataset.index);
+                    showPhoto();
+                });
+            });
+        }
+
+        function nextPhoto() {
+            if (!currentAlbum) return;
+            currentIndex = (currentIndex + 1) % currentAlbum.urls.length;
+            showPhoto();
+        }
+
+        function prevPhoto() {
+            if (!currentAlbum) return;
+            currentIndex = (currentIndex - 1 + currentAlbum.urls.length) % currentAlbum.urls.length;
+            showPhoto();
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('active');
+            document.body.style.overflow = '';
+            currentAlbum = null;
+        }
+
+        // ---- Event listeners (static elements) ----
+        lbPrev.addEventListener('click', (e) => { e.stopPropagation(); prevPhoto(); });
+        lbNext.addEventListener('click', (e) => { e.stopPropagation(); nextPhoto(); });
+        lbClose.addEventListener('click', closeLightbox);
+        lbBackdrop.addEventListener('click', closeLightbox);
+
+        lbImg.addEventListener('click', (e) => {
+            e.stopPropagation();
+            nextPhoto();
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (!lightbox.classList.contains('active')) return;
+            switch (e.key) {
+                case 'ArrowLeft':  e.preventDefault(); prevPhoto(); break;
+                case 'ArrowRight': e.preventDefault(); nextPhoto(); break;
+                case 'Escape':     e.preventDefault(); closeLightbox(); break;
+                case ' ':          e.preventDefault(); nextPhoto(); break;
+            }
+        });
+
+        // Touch swipe
+        let touchStartX = 0, touchEndX = 0;
+        lightbox.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        }, { passive: true });
+        lightbox.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            const diff = touchStartX - touchEndX;
+            if (Math.abs(diff) > 50) {
+                if (diff > 0) nextPhoto();
+                else prevPhoto();
+            }
+        }, { passive: true });
+
+        // ---- Attach click listeners to album covers (re-attachable after re-render) ----
+        function attachCoverListeners() {
+            document.querySelectorAll('.album-cover').forEach(cover => {
+                // Clone to remove old listeners, then re-add
+                const newCover = cover.cloneNode(true);
+                cover.parentNode.replaceChild(newCover, cover);
+
+                newCover.addEventListener('click', (e) => {
+                    const albumKey = newCover.dataset.album;
+                    if (!albumKey || !albums[albumKey]) return;
+
+                    const thumb = e.target.closest('.album-thumb');
+                    const index = thumb ? parseInt(thumb.dataset.index) : 0;
+                    openLightbox(albumKey, index);
+                });
+            });
+        }
+
+        // ================================================================
+        //  Scroll reveal animation
+        // ================================================================
+        const tlEntries = document.querySelectorAll('.tl-entry');
+        const observer = new IntersectionObserver((obsEntries) => {
+            obsEntries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, {
+            threshold: 0.2,
+            rootMargin: '0px 0px -40px 0px'
+        });
+        tlEntries.forEach(entry => observer.observe(entry));
+        if (!('IntersectionObserver' in window)) {
+            tlEntries.forEach(entry => entry.classList.add('visible'));
+        }
+
+        // ================================================================
+        //  Boot: auto-discover albums on page load
+        // ================================================================
+        (async function bootAlbums() {
+            const albumKeys = [...document.querySelectorAll('.tl-entry[data-album]')]
+                .map(el => el.dataset.album)
+                .filter(Boolean);
+
+            if (albumKeys.length === 0) return;
+
+            // Step 1: Try fetch-based discovery (works with local server)
+            const fetchResults = await discoverViaFetch(albumKeys);
+            if (fetchResults) {
+                Object.assign(albums, fetchResults);
+                renderAllAlbums();
+                const total = Object.values(fetchResults).reduce((s, a) => s + a.urls.length, 0);
+                showToast('已加载 ' + Object.keys(fetchResults).length + ' 个相册，共 ' + total + ' 张照片');
+                return;
+            }
+
+            // Step 2: Try to restore saved directory handle from IndexedDB
+            if ('showDirectoryPicker' in window) {
+                const savedHandle = await idbLoad('albums-dir');
+                if (savedHandle) {
+                    try {
+                        const perm = await savedHandle.queryPermission({ mode: 'read' });
+                        if (perm === 'granted') {
+                            const fsResults = await discoverViaFileSystem(savedHandle);
+                            Object.assign(albums, fsResults);
+                            renderAllAlbums();
+                            const total = Object.values(fsResults).reduce((s, a) => s + a.urls.length, 0);
+                            showToast('已加载 ' + Object.keys(fsResults).length + ' 个相册，共 ' + total + ' 张照片');
+                            return;
+                        }
+                    } catch (e) {
+                        // Handle may be stale — fall through to picker
+                    }
+                }
+
+                // Step 3: Show folder picker
+                showPicker();
+            } else {
+                // No File System Access API — show unsupported message
+                document.querySelectorAll('.album-cover').forEach(cover => {
+                    cover.innerHTML = '<div class="album-empty">浏览器不支持自动读取文件夹<br>请通过本地服务器打开</div>';
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
