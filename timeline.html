@@ -890,6 +890,157 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* ===== Classmate Messages Section ===== */
+        .messages-section {
+            position: relative;
+            z-index: 1;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: clamp(20px, 3vw, 40px) clamp(16px, 4vw, 40px) clamp(60px, 10vw, 120px);
+        }
+
+        .messages-divider {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: clamp(40px, 6vw, 64px);
+        }
+
+        .messages-divider::before,
+        .messages-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--color-line-accent), transparent);
+        }
+
+        .messages-divider span {
+            font-family: var(--font-display);
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            color: var(--color-accent);
+            white-space: nowrap;
+        }
+
+        .messages-header {
+            text-align: center;
+            margin-bottom: clamp(32px, 5vw, 48px);
+        }
+
+        .messages-header h2 {
+            font-family: var(--font-display);
+            font-size: clamp(1.6rem, 3vw, 2.2rem);
+            font-weight: 600;
+            color: var(--color-text);
+            letter-spacing: -0.02em;
+            margin-bottom: 8px;
+        }
+
+        .messages-header p {
+            font-size: clamp(0.9rem, 1.2vw, 1rem);
+            color: var(--color-text-secondary);
+        }
+
+        .messages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+            gap: clamp(16px, 2.5vw, 24px);
+        }
+
+        .message-card {
+            position: relative;
+            background: var(--color-surface);
+            border-radius: var(--radius-card);
+            padding: clamp(28px, 3vw, 40px) clamp(22px, 2.5vw, 30px) clamp(20px, 2.5vw, 28px);
+            box-shadow:
+                0 1px 2px var(--color-shadow),
+                0 4px 16px var(--color-shadow);
+            transition: transform 0.4s var(--transition-smooth),
+                        box-shadow 0.4s var(--transition-smooth);
+            overflow: hidden;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: revealEntry 0.7s var(--transition-smooth) forwards;
+            animation-play-state: paused;
+        }
+
+        .message-card.visible {
+            animation-play-state: running;
+        }
+
+        .message-card:hover {
+            transform: translateY(-4px);
+            box-shadow:
+                0 2px 4px var(--color-shadow),
+                0 8px 24px var(--color-shadow),
+                0 16px 48px var(--color-shadow-lg);
+        }
+
+        .message-card::before {
+            content: '\201C';
+            position: absolute;
+            top: -8px;
+            left: 14px;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--color-accent-soft);
+            opacity: 0.3;
+            line-height: 1;
+            pointer-events: none;
+        }
+
+        .message-text {
+            position: relative;
+            font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+            color: var(--color-text);
+            line-height: 1.8;
+            margin-bottom: 16px;
+            word-break: break-word;
+        }
+
+        .message-author {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--color-accent);
+            letter-spacing: 0.02em;
+        }
+
+        .message-author::before {
+            content: '';
+            width: 16px;
+            height: 1px;
+            background: var(--color-accent-soft);
+        }
+
+        .message-status {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--color-text-light);
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .messages-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .message-card {
+                animation: none !important;
+                opacity: 1 !important;
+                transform: none !important;
+            }
+            .message-card:hover { transform: none; }
+        }
+
         /* ===== Print ===== */
         @media print {
             .bg-texture, .lightbox { display: none; }
@@ -974,9 +1125,9 @@
     <!-- ===== Header ===== -->
     <header class="header">
         <div class="header-eyebrow">Timeline</div>
-        <h1>歪比巴卜1</h1>
+        <h1>我们的时光</h1>
         <p class="header-subtitle">
-            歪比巴卜2
+            每一帧画面，都是青春最珍贵的注脚
         </p>
     </header>
 
@@ -1179,6 +1330,13 @@
         const albums = {};  // { key: { urls: [...], names: [...] } }
         const IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif|svg)$/i;
 
+        // Resolve the albums directory as an absolute URL based on this HTML
+        // file's own location.  This guarantees that paths stay correct no
+        // matter which sub-directory the site is deployed under.
+        //   e.g. deployed at /class-site/  ->  /class-site/assets/albums/
+        //        deployed at /             ->  /assets/albums/
+        const ALBUMS_DIR = new URL('assets/albums/', window.location.href).href;
+
         // ---- IndexedDB helpers (persist directory handle) ----
         const IDB_NAME = 'timeline-albums';
         const IDB_STORE = 'handles';
@@ -1217,7 +1375,7 @@
 
             await Promise.all(albumKeys.map(async key => {
                 try {
-                    const resp = await fetch('assets/albums/' + key + '/');
+                    const resp = await fetch(ALBUMS_DIR + key + '/');
                     if (!resp.ok) return;
                     const html = await resp.text();
                     const doc = new DOMParser().parseFromString(html, 'text/html');
@@ -1233,7 +1391,7 @@
                     if (photos.length > 0) {
                         photos.sort((a, b) => a.localeCompare(b, 'zh'));
                         results[key] = {
-                            urls: photos.map(f => 'assets/albums/' + key + '/' + encodeURIComponent(f)),
+                            urls: photos.map(f => ALBUMS_DIR + key + '/' + encodeURIComponent(f)),
                             names: photos
                         };
                         any = true;
