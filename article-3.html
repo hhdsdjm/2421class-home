@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>写给未来的自己 — 杜凌希瑶 · 高二（21）班</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --font-display: 'Outfit', 'Noto Sans SC', sans-serif;
+            --font-body: 'Noto Sans SC', 'Outfit', sans-serif;
+            --bg-main: #faf8f3;
+            --text-dark: #2c2416;
+            --text-mid: #5e5340;
+            --text-light: #9a8f7a;
+            --accent: #7a6b5c;
+            --border: #e8e2d4;
+            --content-max: 720px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: var(--font-body); background: var(--bg-main);
+            color: var(--text-dark); line-height: 1.85; min-height: 100vh;
+            -webkit-font-smoothing: antialiased; overflow-x: hidden;
+        }
+        .bg-texture {
+            position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.3;
+            background: radial-gradient(ellipse at 50% 0%, rgba(122,107,92,0.05) 0%, transparent 60%);
+        }
+        .back-btn {
+            position: fixed; top: clamp(16px, 3vh, 24px); left: clamp(16px, 3vw, 28px); z-index: 999;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 9px 18px 9px 13px;
+            background: rgba(255,255,255,0.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(200,190,170,0.4); border-radius: 28px;
+            color: var(--text-mid); font-size: 0.88rem; font-weight: 500;
+            text-decoration: none; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            transition: all 0.35s cubic-bezier(0.34,1.56,0.64,1);
+            cursor: pointer; font-family: inherit; letter-spacing: 0.02em;
+        }
+        .back-btn:hover { transform: translateX(-3px); box-shadow: 0 4px 20px rgba(0,0,0,0.10); background: rgba(255,255,255,0.96); color: var(--text-dark); }
+        .back-btn:active { transform: translateX(-1px) scale(0.97); }
+        .back-btn svg { width: 17px; height: 17px; transition: transform 0.35s ease; }
+        .back-btn:hover svg { transform: translateX(-2px); }
+        .article {
+            position: relative; z-index: 1;
+            max-width: var(--content-max); margin: 0 auto;
+            padding: 72px 24px 80px;
+        }
+        .article__back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            text-decoration: none; color: var(--text-light);
+            font-size: 0.88rem; font-weight: 500; letter-spacing: 0.02em;
+            margin-bottom: 40px; transition: color 0.25s ease;
+        }
+        .article__back-link:hover { color: var(--accent); }
+        .article__back-link svg { width: 16px; height: 16px; }
+        .article__meta {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+        }
+        .article__author {
+            font-size: 0.92rem; font-weight: 600; color: var(--accent); letter-spacing: 0.02em;
+        }
+        .article__dot { width: 4px; height: 4px; border-radius: 50%; background: var(--border); }
+        .article__date { font-size: 0.85rem; color: var(--text-light); letter-spacing: 0.02em; }
+        .article__title {
+            font-family: var(--font-display);
+            font-size: clamp(1.7rem, 4.5vw, 2.5rem);
+            font-weight: 800; letter-spacing: -0.025em;
+            line-height: 1.2; margin-bottom: 36px;
+            color: var(--text-dark);
+        }
+        .article__body p {
+            font-size: 1.02rem; color: var(--text-mid); line-height: 2;
+            margin-bottom: 24px; text-indent: 2em;
+        }
+        .article__body blockquote {
+            margin: 28px 0; padding: 20px 28px;
+            border-left: 3px solid var(--accent);
+            background: rgba(122,107,92,0.05);
+            border-radius: 0 4px 4px 0;
+            font-style: italic;
+            color: var(--text-mid);
+        }
+        .article__body blockquote p {
+            text-indent: 0; margin-bottom: 0; font-size: 1.05rem;
+        }
+        .article__divider {
+            text-align: center; margin: 48px 0 40px;
+            color: var(--text-light); font-size: 0.85rem; letter-spacing: 0.1em; opacity: 0.5;
+        }
+        .article__footer {
+            text-align: center; padding: 20px 0; border-top: 1px solid var(--border);
+        }
+        .article__footer a {
+            display: inline-flex; align-items: center; gap: 6px;
+            text-decoration: none; color: var(--accent); font-size: 0.95rem; font-weight: 600;
+            transition: all 0.25s ease;
+        }
+        .article__footer a:hover { gap: 12px; }
+        .article__footer a svg { width: 18px; height: 18px; }
+        @media (max-width: 640px) {
+            .article { padding: 60px 18px 60px; }
+            .article__body p { font-size: 0.95rem; text-indent: 1.5em; }
+            .article__body blockquote { padding: 16px 20px; }
+            .back-btn { padding: 7px 14px 7px 10px; font-size: 0.8rem; top: 12px; left: 12px; gap: 4px; }
+            .back-btn svg { width: 15px; height: 15px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .back-btn { transition: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-texture"></div>
+
+    <a href="index.html?back=1" class="back-btn" aria-label="返回首页">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>返回首页</span>
+    </a>
+
+    <article class="article">
+        <a href="114514.html" class="article__back-link">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="15 18 9 12 15 6"></polyline>
+            </svg>
+            返回文章广场
+        </a>
+
+        <div class="article__meta">
+            <span class="article__author">杜凌希瑶</span>
+            <span class="article__dot"></span>
+            <span class="article__date">2026年7月6日</span>
+        </div>
+
+        <h1 class="article__title">写给未来的自己</h1>
+
+        <div class="article__body">
+            <blockquote>
+                <p>"或许我们无法改变这个世界，但至少请不要被世界所改变。"</p>
+            </blockquote>
+
+            <p>亲爱的十年后的自己：</p>
+
+            <p>当你读到这封信的时候，你已经二十六岁了。不知道你是否还记得，十七岁的你坐在教室靠窗的第三排，阳光透过梧桐叶的缝隙洒在信纸上，你一笔一划写下这些字的时候，心里既忐忑又期待。</p>
+
+            <p>我想问问你，现在的你过得还好吗？你有没有成为自己想成为的人？那些曾经以为过不去的坎，现在回头看，是不是也不过如此？高二那年你觉得数学永远学不会、物理永远听不懂，可你还是咬着牙走下来了。所以我想，你一定也有办法应对后来的种种困难吧。</p>
+
+            <p>写下这些的时候，我正在经历人生中最兵荒马乱却也最闪闪发光的日子。每天五点五十起床，晚上十一点还在刷题。累是真的累，但每当晚自习间隙抬起头，看到全班同学都在埋头苦读，那种"我不是一个人在战斗"的感觉，比任何鸡汤都管用。</p>
+
+            <p>你说过，或许我们无法改变这个世界，但至少请不要被世界所改变。这句话我一直记着，也希望你没有忘记。十年足够改变很多东西——你可能会换了好几份工作，可能在陌生的城市里独自打拼，可能遇到过让你心碎的人，也可能已经组建了自己的家庭。无论经历了什么，我希望你的眼睛里还保留着十七岁时的那份清澈。</p>
+
+            <p>不要变成那个你曾经讨厌的大人。还记不记得高二那年，你说你最讨厌的就是那些对生活失去热情、整天抱怨却又不做任何改变的人？不要成为那样的人。保持你对世界的好奇心，保持你对他人的善意，保持你对梦想的执着。哪怕走得慢一点，也不要停下来。</p>
+
+            <p>还有，记得多回家看看。爸妈这几年已经开始长白头发了。你每次回家，妈妈都会做一大桌你爱吃的菜，爸爸虽然话不多，但总是在你离开时站在门口目送你很久。这些你可能在忙碌中忽略的细节，十七岁的我都替你记住了。</p>
+
+            <p>最后，如果现在的你正在经历低谷，请相信十七岁的那个你说过的话：一切都会好起来的。你比自己想象的要坚强得多。</p>
+
+            <p>愿你出走半生，归来仍是少年。</p>
+
+            <p style="text-align:right;">十七岁的你<br>2026年7月6日</p>
+        </div>
+
+        <div class="article__divider">· · ·</div>
+
+        <div class="article__footer">
+            <a href="114514.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="19" y1="12" x2="5" y2="12"></line>
+                    <polyline points="12 19 5 12 12 5"></polyline>
+                </svg>
+                返回文章列表
+            </a>
+        </div>
+    </article>
+</body>
+</html>

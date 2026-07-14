@@ -477,23 +477,26 @@
             position: absolute;
             top: 50%;
             transform: translateY(-50%);
-            width: 44px;
-            height: 44px;
+            width: 52px;
+            height: 52px;
             border-radius: 50%;
             border: none;
-            background: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.2);
             color: white;
-            font-size: 1.2rem;
+            font-size: 1.5rem;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
             backdrop-filter: blur(10px);
-            transition: all 0.2s;
+            transition: background 0.2s, transform 0.2s;
+            z-index: 10;
         }
-        .lightbox-nav:hover { background: rgba(255,255,255,0.3); }
-        .lightbox-nav.prev { left: -60px; }
-        .lightbox-nav.next { right: -60px; }
+        .lightbox-nav:hover { background: rgba(255,255,255,0.35); transform: translateY(-50%) scale(1.08); }
+        .lightbox-nav:active { transform: translateY(-50%) scale(0.95); }
+        /* 固定在灯箱左右两侧边缘内侧，始终可见 */
+        .lightbox-nav.prev { left: 32px; }
+        .lightbox-nav.next { right: 32px; }
         .lightbox-counter {
             color: rgba(255,255,255,0.5);
             font-size: 0.85rem;
@@ -517,8 +520,8 @@
             .toolbar { padding: 0 16px; }
             .photo-wall { padding: 0 16px 40px; }
             .grid { grid-template-columns: repeat(auto-fill, minmax(95px, 1fr)); gap: 8px; }
-            .lightbox-nav.prev { left: 8px; }
-            .lightbox-nav.next { right: 8px; }
+            .lightbox-nav.prev { left: 12px; }
+            .lightbox-nav.next { right: 12px; }
             .lightbox-content { width: 85%; }
         }
 
@@ -701,6 +704,7 @@
 // 已按姓名拼音首字母排序，含姓氏首字母字段
 const allStudents = [
     { name: "蔡伟业",   initial: "C", gender: "M" },
+    { name: "陈秋钰",   initial: "C", gender: "M" },
     { name: "陈禹昌",   initial: "C", gender: "M" },
     { name: "邓易伟",   initial: "D", gender: "M" },
     { name: "丁梓越",   initial: "D", gender: "M" },
@@ -708,13 +712,16 @@ const allStudents = [
     { name: "杜凌希瑶",   initial: "D", gender: "F" },
     { name: "何梓龙",   initial: "H", gender: "M" },
     { name: "黎宏捷",   initial: "L", gender: "M" },
+    { name: "李敬喆",   initial: "L", gender: "M" },
     { name: "罗子琛",   initial: "L", gender: "M" },
     { name: "潘朕阳",   initial: "P", gender: "M" },
     { name: "秦臻扬",   initial: "Q", gender: "M" },
     { name: "孙慕然",   initial: "S", gender: "M" },
     { name: "宋林安",   initial: "S", gender: "M" },
     { name: "王一丁",   initial: "W", gender: "M" },
+    { name: "王子麟",   initial: "W", gender: "M" },
     { name: "吴伊凡",   initial: "W", gender: "M" },
+    { name: "吴亦昂",   initial: "W", gender: "M" },
     { name: "谢雨轩",   initial: "X", gender: "F" },
     { name: "杨俊超",   initial: "Y", gender: "M" },
     { name: "张晋森",   initial: "Z", gender: "M" },
