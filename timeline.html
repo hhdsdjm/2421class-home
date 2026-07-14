@@ -1319,23 +1319,25 @@
 
     <script>
         // ================================================================
-        //  Auto-discovery: no manual filename listing needed.
-        //  Each album = a subfolder under assets/albums/
+        //  Photo discovery — manifest-based (GitHub Pages compatible)
+        //
+        //  GitHub Pages does NOT serve directory listings, so the old
+        //  fetch-directory-index approach fails. Instead we read an
+        //  explicit manifest.json file that lists every photo filename.
+        //
         //  Strategy:
-        //    1. fetch() directory listing  (works when served via HTTP)
-        //    2. File System Access API     (works when opened as file://)
-        //    3. IndexedDB persistence      (remember the picked folder)
+        //    1. fetch('assets/albums/manifest.json')  (GitHub Pages, any HTTP server)
+        //    2. File System Access API                 (local file:// fallback)
+        //    3. IndexedDB persistence                  (remember the picked folder)
         // ================================================================
 
         const albums = {};  // { key: { urls: [...], names: [...] } }
         const IMAGE_RE = /\.(jpe?g|png|gif|webp|bmp|avif|svg)$/i;
 
-        // Resolve the albums directory as an absolute URL based on this HTML
-        // file's own location.  This guarantees that paths stay correct no
-        // matter which sub-directory the site is deployed under.
-        //   e.g. deployed at /class-site/  ->  /class-site/assets/albums/
-        //        deployed at /             ->  /assets/albums/
-        const ALBUMS_DIR = new URL('assets/albums/', window.location.href).href;
+        // Relative path to the albums directory.
+        // Using './' prefix guarantees correctness regardless of deployment
+        // depth (root, /repo-name/, or any sub-path on GitHub Pages).
+        const ALBUMS_DIR = './assets/albums/';
 
         // ---- IndexedDB helpers (persist directory handle) ----
         const IDB_NAME = 'timeline-albums';
@@ -1368,36 +1370,27 @@
             });
         }
 
-        // ---- Method 1: fetch-based directory listing (HTTP server) ----
-        async function discoverViaFetch(albumKeys) {
+        // ---- Method 1: fetch manifest.json (works on GitHub Pages & any HTTP server) ----
+        async function discoverViaManifest(albumKeys) {
             const results = {};
             let any = false;
 
-            await Promise.all(albumKeys.map(async key => {
-                try {
-                    const resp = await fetch(ALBUMS_DIR + key + '/');
-                    if (!resp.ok) return;
-                    const html = await resp.text();
-                    const doc = new DOMParser().parseFromString(html, 'text/html');
-                    const links = [...doc.querySelectorAll('a')];
-                    const photos = [];
-                    for (const link of links) {
-                        const href = link.getAttribute('href') || '';
-                        const name = decodeURIComponent(href.split('/').pop().split('?')[0]);
-                        if (name && IMAGE_RE.test(name) && !photos.includes(name)) {
-                            photos.push(name);
-                        }
-                    }
-                    if (photos.length > 0) {
-                        photos.sort((a, b) => a.localeCompare(b, 'zh'));
+            try {
+                const resp = await fetch(ALBUMS_DIR + 'manifest.json');
+                if (!resp.ok) return null;
+                const manifest = await resp.json();
+
+                for (const key of albumKeys) {
+                    const files = manifest[key];
+                    if (files && Array.isArray(files) && files.length > 0) {
                         results[key] = {
-                            urls: photos.map(f => ALBUMS_DIR + key + '/' + encodeURIComponent(f)),
-                            names: photos
+                            urls: files.map(f => ALBUMS_DIR + key + '/' + encodeURIComponent(f)),
+                            names: files.slice()
                         };
                         any = true;
                     }
-                } catch (e) { /* file:// or CORS — expected */ }
-            }));
+                }
+            } catch (e) { /* file:// or network error — fall through to FS API */ }
 
             return any ? results : null;
         }
@@ -1730,8 +1723,8 @@
 
             if (albumKeys.length === 0) return;
 
-            // Step 1: Try fetch-based discovery (works with local server)
-            const fetchResults = await discoverViaFetch(albumKeys);
+            // Step 1: Try manifest-based discovery (works on GitHub Pages & any HTTP server)
+            const fetchResults = await discoverViaManifest(albumKeys);
             if (fetchResults) {
                 Object.assign(albums, fetchResults);
                 renderAllAlbums();
